@@ -1,0 +1,95 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: viewed_items
+    // Fields:
+    //   - itemId: string (required)
+    //   - title: string (required, < 200 chars)
+    //   - seller: string (required, < 100 chars)
+    //   - price: number (required, >= 0)
+    //   - currency: string (optional)
+    //   - keywords: list (optional, strings < 50 chars)
+    //   - viewedAt: string (required, ISO 8601)
+    //   - userId: string (required, matches auth.uid)
+    //
+    // Collection: saved_searches
+    // Fields:
+    //   - name: string (required, < 100 chars)
+    //   - query: string (required, < 200 chars)
+    //   - category: string (optional)
+    //   - minPrice: number (optional)
+    //   - maxPrice: number (optional)
+    //   - includeKeywords: list (optional)
+    //   - excludeKeywords: list (optional)
+    //   - userId: string (required, matches auth.uid)
+    //   - createdAt: string (required, ISO 8601)
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "17messia@gmail.com" && request.auth.token.email_verified == true)); // Default admin
+    }
+
+    function isValidDateString(dateStr) {
+      return dateStr is string &&
+        dateStr.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$");
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+    function isValidViewedItem(data) {
+      return data.keys().hasAll(['itemId', 'title', 'seller', 'price', 'viewedAt', 'userId']) &&
+             data.itemId is string && data.itemId.size() < 100 &&
+             data.title is string && data.title.size() < 200 &&
+             data.seller is string && data.seller.size() < 100 &&
+             data.price is number && data.price >= 0 &&
+             isValidDateString(data.viewedAt) &&
+             data.userId == request.auth.uid;
+    }
+
+    function isValidSavedSearch(data) {
+      return data.keys().hasAll(['name', 'query', 'userId', 'createdAt']) &&
+             data.name is string && data.name.size() < 100 &&
+             data.query is string && data.query.size() < 200 &&
+             data.userId == request.auth.uid &&
+             isValidDateString(data.createdAt);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+    match /viewed_items/{viewId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && isValidViewedItem(request.resource.data);
+      allow update: if false; // Viewed items are immutable
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    match /saved_searches/{searchId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && isValidSavedSearch(request.resource.data);
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid && isValidSavedSearch(request.resource.data);
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}

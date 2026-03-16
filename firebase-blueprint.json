@@ -1,0 +1,47 @@
+{
+  "entities": {
+    "ViewedItem": {
+      "title": "Viewed Item",
+      "description": "Represents an item that has been viewed by the user.",
+      "type": "object",
+      "properties": {
+        "itemId": { "type": "string", "description": "The Allegro item ID" },
+        "title": { "type": "string", "description": "Title of the item" },
+        "seller": { "type": "string", "description": "Seller name" },
+        "price": { "type": "number", "description": "Price of the item" },
+        "currency": { "type": "string", "description": "Currency code" },
+        "keywords": { "type": "array", "items": { "type": "string" }, "description": "Keywords matched" },
+        "viewedAt": { "type": "string", "format": "date-time", "description": "When the item was viewed" },
+        "userId": { "type": "string", "description": "The user who viewed the item" }
+      },
+      "required": ["itemId", "title", "seller", "price", "viewedAt", "userId"]
+    },
+    "SavedSearch": {
+      "title": "Saved Search",
+      "description": "A search configuration saved by the user.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "User-defined name for the search" },
+        "query": { "type": "string", "description": "Search phrase" },
+        "category": { "type": "string", "description": "Category ID or path" },
+        "minPrice": { "type": "number" },
+        "maxPrice": { "type": "number" },
+        "includeKeywords": { "type": "array", "items": { "type": "string" } },
+        "excludeKeywords": { "type": "array", "items": { "type": "string" } },
+        "userId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "query", "userId", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/viewed_items/{viewId}": {
+      "schema": "ViewedItem",
+      "description": "Collection of items viewed by users."
+    },
+    "/saved_searches/{searchId}": {
+      "schema": "SavedSearch",
+      "description": "Collection of saved search configurations."
+    }
+  }
+}
